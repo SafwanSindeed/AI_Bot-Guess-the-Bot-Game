@@ -27,9 +27,8 @@ if OPENAI_AVAILABLE and OPENAI_API_KEY:
     client = OpenAI(api_key=OPENAI_API_KEY)
 else:
     client = None
-    print("⚠️ OpenAI API not available. Bot will use mock answers.")
 
-# --- Game state ---
+# Game state 
 joined_users = []           # list of human Discord IDs
 players_anonymous = {}      # maps Discord ID / 'BOT' -> 'Player X'
 reverse_players = {}        # maps 'Player X' -> Discord ID / 'BOT'
@@ -44,12 +43,12 @@ questions = [
     "What is your favorite movie of all time?"
 ]
 
-# --- Bot ready event ---
+# Bot ready event
 @bot.event
 async def on_ready():
     print(f"{bot.user} has connected to Discord!")
 
-# --- Helper function to get bot answer ---
+# Bot Prompt/Answer
 def get_bot_answer(question: str) -> str:
     if client:
         try:
@@ -64,9 +63,6 @@ def get_bot_answer(question: str) -> str:
             return response.choices[0].message.content.strip()
         except Exception as e:
             print(f"OpenAI API failed: {e}")
-    # Fallback mock teen-like answers
-    mock_answers = ["Pizza", "Beach", "Car", "Fly", "Inception", "Cat", "Chill", "Gaming", "Da Vinci", "Guitar", "Park", "Paris"]
-    return random.choice(mock_answers)
 
 # --- Commands ---
 @bot.command(name="join")
@@ -96,7 +92,7 @@ async def startgame(ctx):
     all_participants = joined_users + [bot_player_id]
     random.shuffle(all_participants)
 
-    # Assign Player numbers randomly
+    # Assign Player numbers randomly (consistent across whole game)
     players_anonymous = {}
     reverse_players = {}
     for i, uid in enumerate(all_participants, start=1):
@@ -155,7 +151,7 @@ async def play(ctx):
                 if anon_name not in round_answers:
                     round_answers[anon_name] = "No Answer"
 
-        # Shuffle and reveal all answers
+        # Shuffle and reveal all answers (only shuffle answers, not player IDs)
         shuffled_answers = list(round_answers.items())
         random.shuffle(shuffled_answers)
 
@@ -184,24 +180,24 @@ async def vote(ctx, player_num: int):
 
 @bot.command(name="reveal")
 async def reveal(ctx):
-    bot_player_name = players_anonymous[bot_player_id]       # e.g. "Player 3"
-    bot_number = int(bot_player_name.split()[1])             # extract number
+    bot_player_name = players_anonymous[bot_player_id]   # e.g. "Player 3"
+    bot_number = int(bot_player_name.split()[1])         # extract number
 
     await ctx.send(f"The bot was {bot_player_name}!")
 
-    # Find players who guessed correctly
+    # Find winners
     winners = []
     for user_id, voted_num in votes.items():
         if voted_num == bot_number:
             if user_id in players_anonymous:
                 winners.append(players_anonymous[user_id])
             else:
-                winners.append(f"Player {voted_num}")
+                winners.append(f"Unknown Player ({user_id})")
 
     if winners:
         await ctx.send(f"🎉 Correct guessers: {', '.join(winners)}")
     else:
         await ctx.send("Nobody guessed correctly!")
 
-# --- Run the bot ---
+# Run Program
 bot.run(DISCORD_TOKEN)
